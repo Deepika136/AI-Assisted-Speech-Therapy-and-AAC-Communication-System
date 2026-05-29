@@ -54,10 +54,10 @@ EchoLearn is a web-based platform that combines an Augmentative and Alternative 
 
 ## Tech Stack
 
-Frontend- React.js, Recharts,HTML,CSS,JavaScript
-Backend- Node.js, Express.js
-Database-MongoDB, Mongoose
-Speech AI-Microsoft Azure Speech Services
+- Frontend- React.js, Recharts,HTML,CSS,JavaScript
+- Backend- Node.js, Express.js
+- Database-MongoDB, Mongoose
+- Speech AI-Microsoft Azure Speech Services
 
 
 ## System Architecture:
