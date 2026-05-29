@@ -42,6 +42,41 @@ const userSchema = new mongoose.Schema({
   childPassword: String,
 });
 
+// History Schema for storing practice attempts
+// const historySchema = new mongoose.Schema({
+//   childId: { type: mongoose.Schema.Types.ObjectId, required: true },
+//   word: { type: String, required: true },
+//   score: { type: Number, required: true },
+//   stars: { type: Number, required: true },
+//   phonemes: { type: Array, required: true },
+//   heard: { type: String, required: true },
+//   timestamp: { type: Date, default: Date.now },
+//   date: { type: String, required: true }
+// });
+
+
+const historySchema = new mongoose.Schema({
+  childId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  word: { type: String, required: true },
+  score: { type: Number, required: true },
+  stars: { type: Number, required: true },
+  difficulty: { type: String, default: "easy" },
+  phonemes: [{
+    sound: String,
+    score: Number,
+    errorType: String,
+    hint: String,
+    position: String,
+    wordContext: String
+  }],
+  heard: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+  date: { type: String, required: true },
+  isBaseline: { type: Boolean, default: false }
+});
+
+const History = mongoose.model("History", historySchema);
+
 const User = mongoose.model("User", userSchema);
 const tileSchema = new mongoose.Schema({
   category: String,
@@ -76,6 +111,18 @@ app.post("/api/login-parent", async (req, res) => {
   res.status(200).json({ message: "Parent login successful" });
 });
 
+
+
+// 8) CHILD LOGIN ROUTE
+// app.post("/api/login-child", async (req, res) => {
+//   const { childName, childPassword } = req.body;
+
+//   const user = await User.findOne({ childName, childPassword });
+//   if (!user) return res.status(401).json({ message: "Invalid child credentials" });
+
+//   res.status(200).json({ message: "Child login successful" });
+// });
+
 // 8) CHILD LOGIN ROUTE
 app.post("/api/login-child", async (req, res) => {
   const { childName, childPassword } = req.body;
@@ -83,7 +130,10 @@ app.post("/api/login-child", async (req, res) => {
   const user = await User.findOne({ childName, childPassword });
   if (!user) return res.status(401).json({ message: "Invalid child credentials" });
 
-  res.status(200).json({ message: "Child login successful" });
+  res.status(200).json({ 
+    message: "Child login successful",
+    childId: user._id
+  });
 });
 
 // ADD AAC TILE (with URL only for now)
@@ -111,6 +161,78 @@ app.get("/api/azure-token", (req, res) => {
     key: process.env.AZURE_SPEECH_KEY,
     region: process.env.AZURE_SPEECH_REGION
   });
+});
+
+// Save practice history
+// app.post("/api/save-history", async (req, res) => {
+//   const { childId, word, score, stars, phonemes, heard } = req.body;
+
+//   try {
+//     const newEntry = new History({
+//       childId,
+//       word,
+//       score,
+//       stars,
+//       phonemes,
+//       heard,
+//       date: new Date().toISOString().split('T')[0]
+//     });
+app.post("/api/save-history", async (req, res) => {
+  const { childId, word, score, stars, phonemes, heard, difficulty, isBaseline } = req.body;
+  try {
+    const newEntry = new History({
+      childId, word, score, stars, phonemes, heard,
+      difficulty: difficulty || "easy",
+      isBaseline: isBaseline || false,
+      date: new Date().toISOString().split('T')[0]
+    });
+    await newEntry.save();
+    res.status(200).json({ message: "History saved successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving history", error: err });
+  }
+});
+
+// Get practice history for a child
+app.get("/api/get-history/:childId", async (req, res) => {
+  try {
+    const history = await History.find({ childId: req.params.childId })
+      .sort({ timestamp: -1 });
+      
+    res.status(200).json(history);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching history", error: err });
+  }
+});
+
+
+
+
+
+// Check if child has completed baseline assessment
+app.get("/api/check-baseline/:childId", async (req, res) => {
+  try {
+    const baselineExists = await History.findOne({ 
+      childId: req.params.childId, 
+      isBaseline: true 
+    });
+    res.json({ hasBaseline: !!baselineExists });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get baseline scores for a child
+app.get("/api/get-baseline/:childId", async (req, res) => {
+  try {
+    const baselineEntries = await History.find({ 
+      childId: req.params.childId, 
+      isBaseline: true 
+    });
+    res.json(baselineEntries);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
